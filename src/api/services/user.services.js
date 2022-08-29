@@ -1,0 +1,833 @@
+
+const { models } = require('../../database/index');
+var moment = require("moment");
+const { Op, Sequelize } = require("sequelize");
+const sequelize = require('sequelize');
+/***
+ * 
+ * @description Date - 29-12-2021 Create By Dipesh 
+ * Update By 
+ * 
+ */
+async function insertServices(params) {
+    try {
+        const { ISSOCIAL } = params;
+        params.MEDITATION_START_DATE = moment(new Date()).startOf('day');
+        let meditationData = await models.Meditation.findOne({ where: { MEDITATION_TYPE: "TRIAL" } })
+        meditationData.dataValues.URLS = process.env.AWS_IMAGE_URL;
+        params.MEDITATION_ID = meditationData.dataValues.MEDITATION_ID;
+        let oldMeditation = [params.MEDITATION_ID];
+        let nextMeditation = await models.Meditation.findOne({ where: { MEDITATION_TYPE: "TRIAL", MEDITATION_ID: { [Op.notIn]: oldMeditation } } });
+        params.NEXT_MEDITATION_ID = nextMeditation.dataValues.MEDITATION_ID;
+        params.MEDITATION_IDS = meditationData.dataValues.MEDITATION_ID.toString() + ',' + nextMeditation.dataValues.MEDITATION_ID;
+        let lastDate = moment().endOf('date').add(Number(process.env.TRIAL_DAYS) - 1, 'day'); // Fix By Keyur -- Trial
+        params.SUBCRIPTION_DAYS = Number(process.env.TRIAL_DAYS);
+        params.SUBCRIPTION_END_DATE = lastDate;
+        params.ISSUBCRIBE = true;
+        if (!ISSOCIAL) {
+            const { TYPE } = params;
+            if (TYPE.toUpperCase() === "NORMAL") {
+                const { EMAIL, PASSWORD } = params;
+                let countEmailUser = await models.User.count({ where: { EMAIL: EMAIL } });
+                if (countEmailUser === 0 && PASSWORD.length > 0) {
+                    params.STEP_HISTORY = false.toString() + ',';
+                    var insertSave = await models.User.create(params);
+                    if (!!insertSave) {
+                        let strStepHistory = insertSave.dataValues.STEP_HISTORY.split(',');
+                        insertSave.dataValues.STEP_HISTORY = strStepHistory.slice(0, strStepHistory.length - 1)
+                        return {
+                            status: true,
+                            msg: "Create Successfully.",
+                            data: insertSave,
+                            meditationData,
+                            nextMeditation,
+                            TRIAL_DAYS: Number(process.env.TRIAL_DAYS),
+                            MUSIC_URL: {
+                                FIVE: process.env.AWS_IMAGE_URL + 'five.mp3',
+                                TEN: process.env.AWS_IMAGE_URL + 'ten.mp3',
+                                FIFTEEN: process.env.AWS_IMAGE_URL + 'fifteen.mp3',
+                                TWENTY: process.env.AWS_IMAGE_URL + 'twenty.mp3',
+                            }
+                        }
+                    } else {
+                        /// 502
+                        return {
+                            status: false,
+                            msg: "Error on Insert Data."
+                        }
+                    }
+                } else {
+                    return {
+                        status: false,
+                        msg: "Email already register."
+                    }
+                }
+            } else {
+                // Company User Register
+                const { COMPANY_CODE } = params;
+
+                const countCompany = await models.Company.count({ where: { COMPANY_CODE: COMPANY_CODE, ISACTIVE: true, ISDELETE: false } })
+                const { EMAIL, PASSWORD } = params;
+                let countEmailUser = await models.User.count({ where: { EMAIL: EMAIL } });
+                if (!!COMPANY_CODE && countCompany === 1 && countEmailUser === 0 && PASSWORD.length > 0) {
+                    params.STEP_HISTORY = false.toString() + ',';
+                    var insertSave = await models.User.create(params);
+                    if (!!insertSave) {
+                        let strStepHistory = insertSave.dataValues.STEP_HISTORY.split(',');
+                        insertSave.dataValues.STEP_HISTORY = strStepHistory.slice(0, strStepHistory.length - 1)
+                        return {
+                            status: true,
+                            msg: "Create Successfully.",
+                            data: insertSave,
+                            meditationData,
+                            nextMeditation,
+                            TRIAL_DAYS: Number(process.env.TRIAL_DAYS),
+                            MUSIC_URL: {
+                                FIVE: process.env.AWS_IMAGE_URL + 'five.mp3',
+                                TEN: process.env.AWS_IMAGE_URL + 'ten.mp3',
+                                FIFTEEN: process.env.AWS_IMAGE_URL + 'fifteen.mp3',
+                                TWENTY: process.env.AWS_IMAGE_URL + 'twenty.mp3',
+                            }
+                        }
+                    } else {
+                        /// 502
+                        return {
+                            status: false,
+                            msg: "Error on Insert Data."
+                        }
+                    }
+                } else {
+                    if (countEmailUser > 0) {
+                        return {
+                            status: false,
+                            msg: "Please Enter Email must be unique."
+                        }
+                    } else if (!countCompany) {
+                        return {
+                            status: false,
+                            msg: "Please Enter Company Code must be valid."
+                        }
+                    } else {
+                        return {
+                            status: false,
+                            msg: "Email already register."
+                        }
+                    }
+                }
+            }
+        } else {
+            const { SOCIAL_ID } = params;
+
+            if (!!SOCIAL_ID > 0) {
+                let countUserId = await models.User.count({ where: { SOCIAL_ID: SOCIAL_ID } });
+                if (countUserId === 0) {
+                    params.STEP_HISTORY = false.toString() + ',';
+                    var insertSave = await models.User.create(params);
+                    if (!!insertSave) {
+                        let strStepHistory = insertSave.dataValues.STEP_HISTORY.split(',');
+                        insertSave.dataValues.STEP_HISTORY = strStepHistory.slice(0, strStepHistory.length - 1)
+                        return {
+                            status: true,
+                            msg: "Create Successfully.",
+                            data: insertSave,
+                            meditationData,
+                            nextMeditation,
+                            TRIAL_DAYS: Number(process.env.TRIAL_DAYS),
+                            MUSIC_URL: {
+                                FIVE: process.env.AWS_IMAGE_URL + 'five.mp3',
+                                TEN: process.env.AWS_IMAGE_URL + 'ten.mp3',
+                                FIFTEEN: process.env.AWS_IMAGE_URL + 'fifteen.mp3',
+                                TWENTY: process.env.AWS_IMAGE_URL + 'twenty.mp3',
+                            }
+                        }
+                    } else {
+                        /// 502
+                        return {
+                            status: false,
+                            msg: "Error on Insert Data."
+                        }
+                    }
+                } else {
+                    return {
+                        status: false,
+                        msg: "Account is already exist."
+                    }
+                }
+            } else {
+                return {
+                    status: false,
+                    msg: "Social ID must be fill."
+                }
+
+            }
+        }
+    } catch (error) {
+        var errMessage = error.message.split(',\n').join('');
+        return {
+            status: false,
+            msg: errMessage.split('Validation error: ').join('')
+        }
+    }
+}
+
+/***
+ * 
+ * @description Date - 29-12-2021 Create By Dipesh 
+ * Update By 
+ * 
+ */
+async function loginServices(params) {
+    try {
+        const { ISSOCIAL } = params;
+        if (!ISSOCIAL) {
+            const { EMAIL, PASSWORD } = params;
+            let countEmailUser = await models.User.findOne({ where: { EMAIL: EMAIL, PASSWORD: PASSWORD } });
+            if (!!countEmailUser) {
+                if (countEmailUser.ISACTIVE && !countEmailUser.ISDELETE) {
+                    let userType = await countEmailUser.TYPE;
+                    if (userType === "NORMAL") {
+                        // For Both Same SOCIAL & CUSTOM --- NORMAL User
+                        let finalData = await normalUserLogin(params, countEmailUser)
+                        return finalData;
+                    } else {
+                        /// Company User
+                        var givenSubcriptionDate = moment(countEmailUser.SUBCRIPTION_END_DATE);
+                        var currentDate = moment(new Date()).startOf('day');
+                        var diffrenceSubscriptionDay = moment.duration(givenSubcriptionDate.diff(currentDate)).asDays(); /// Subscription Start Or Not
+                        var getSubscriptionDays = countEmailUser.SUBCRIPTION_DAYS;
+                        var givenMeditationDate = moment(countEmailUser.MEDITATION_START_DATE, "YYYY-MM-DD");
+                        var diffrenceMeditationDay = moment.duration(givenMeditationDate.diff(currentDate)).asDays();
+                        if (diffrenceMeditationDay === 0) {
+                            let myMeditation = await models.Meditation.findByPk(countEmailUser.MEDITATION_ID)
+                            myMeditation.dataValues.URLS = process.env.AWS_IMAGE_URL;
+                            let newMeditation = await models.Meditation.findByPk(countEmailUser.NEXT_MEDITATION_ID)
+                            newMeditation.dataValues.URLS = process.env.AWS_IMAGE_URL;
+                            return {
+                                status: true,
+                                msg: "Login Successfully.",
+                                data: countEmailUser,
+                                meditationData: myMeditation,
+                                nextMeditation: newMeditation,
+                                TRIAL_DAYS: Number(process.env.TRIAL_DAYS),
+                                MUSIC_URL: {
+                                    FIVE: process.env.AWS_IMAGE_URL + 'five.mp3',
+                                    TEN: process.env.AWS_IMAGE_URL + 'ten.mp3',
+                                    FIFTEEN: process.env.AWS_IMAGE_URL + 'fifteen.mp3',
+                                    TWENTY: process.env.AWS_IMAGE_URL + 'twenty.mp3',
+                                }
+                            }
+                        } else {
+                            await userStepUpdate(countEmailUser.USER_ID);
+                            let strStepHistory = countEmailUser.STEP_HISTORY + false.toString() + ',';
+                            /// TRIAL User
+                            if (getSubscriptionDays === Number(process.env.TRIAL_DAYS) && diffrenceSubscriptionDay <= 3 && diffrenceMeditationDay > 0) {
+                                let oldMeditation = countEmailUser.MEDITATION_IDS.split(",");
+                                let totalMeditation = await models.Meditation.count({ where: { MEDITATION_TYPE: "TRIAL" } });
+
+                                if (totalMeditation <= oldMeditation.length) {
+                                    let newMeditation = await models.Meditation.findOne({ where: { MEDITATION_TYPE: "TRIAL" } });
+                                    newMeditation.dataValues.URLS = process.env.AWS_IMAGE_URL;
+                                    let updateMEDITATION_IDS = newMeditation.dataValues.MEDITATION_ID;
+                                    let currentMeditation = await models.Meditation.findOne({ where: { MEDITATION_ID: countEmailUser.NEXT_MEDITATION_ID } });
+                                    currentMeditation.dataValues.URLS = process.env.AWS_IMAGE_URL;
+                                    await models.User.update({
+                                        MEDITATION_IDS: updateMEDITATION_IDS,
+                                        MEDITATION_START_DATE: currentDate,
+                                        MEDITATION_ID: countEmailUser.NEXT_MEDITATION_ID,
+                                        NEXT_MEDITATION_ID: newMeditation.dataValues.MEDITATION_ID,
+                                        ISSTRIKE: false,
+                                        STEP: 0,
+                                        STEP_HISTORY: strStepHistory
+                                    }, { where: { USER_ID: countEmailUser.USER_ID } });
+                                    return {
+                                        status: true,
+                                        msg: "Login Successfully.",
+                                        data: countEmailUser,
+                                        meditationData: currentMeditation,
+                                        nextMeditation: newMeditation,
+                                        TRIAL_DAYS: Number(process.env.TRIAL_DAYS),
+                                        MUSIC_URL: {
+                                            FIVE: process.env.AWS_IMAGE_URL + 'five.mp3',
+                                            TEN: process.env.AWS_IMAGE_URL + 'ten.mp3',
+                                            FIFTEEN: process.env.AWS_IMAGE_URL + 'fifteen.mp3',
+                                            TWENTY: process.env.AWS_IMAGE_URL + 'twenty.mp3',
+                                        }
+                                    }
+                                } else {
+                                    let newMeditation = await models.Meditation.findOne({ where: { MEDITATION_TYPE: "TRIAL", MEDITATION_ID: { [Op.notIn]: oldMeditation } } });
+                                    newMeditation.dataValues.URLS = process.env.AWS_IMAGE_URL;
+                                    let updateMEDITATION_IDS = countEmailUser.MEDITATION_IDS + "," + newMeditation.dataValues.MEDITATION_ID;
+                                    let currentMeditation = await models.Meditation.findOne({ where: { MEDITATION_ID: countEmailUser.NEXT_MEDITATION_ID } });
+                                    currentMeditation.dataValues.URLS = process.env.AWS_IMAGE_URL;
+                                    await models.User.update({
+                                        MEDITATION_IDS: updateMEDITATION_IDS,
+                                        MEDITATION_START_DATE: currentDate,
+                                        MEDITATION_ID: countEmailUser.NEXT_MEDITATION_ID,
+                                        NEXT_MEDITATION_ID: newMeditation.dataValues.MEDITATION_ID,
+                                        ISSTRIKE: false,
+                                        STEP: 0,
+                                        STEP_HISTORY: strStepHistory
+                                    }, { where: { USER_ID: countEmailUser.USER_ID } });
+                                    return {
+                                        status: true,
+                                        msg: "Login Successfully.",
+                                        data: countEmailUser,
+                                        meditationData: newMeditation,
+                                        TRIAL_DAYS: Number(process.env.TRIAL_DAYS),
+                                        MUSIC_URL: {
+                                            FIVE: process.env.AWS_IMAGE_URL + 'five.mp3',
+                                            TEN: process.env.AWS_IMAGE_URL + 'ten.mp3',
+                                            FIFTEEN: process.env.AWS_IMAGE_URL + 'fifteen.mp3',
+                                            TWENTY: process.env.AWS_IMAGE_URL + 'twenty.mp3',
+                                        }
+                                    }
+                                }
+                            }
+                            /// Regular User
+                            else {
+                                let oldMeditation = countEmailUser.MEDITATION_IDS.split(",");
+                                let totalMeditation = await models.Meditation.count({ where: { MEDITATION_TYPE: "REGULAR" } });
+                                if (totalMeditation <= oldMeditation.length) {
+                                    let newMeditation = await models.Meditation.findOne({ where: { MEDITATION_TYPE: "REGULAR" } });
+                                    newMeditation.dataValues.URLS = process.env.AWS_IMAGE_URL;
+                                    let updateMEDITATION_IDS = newMeditation.dataValues.MEDITATION_ID;
+                                    let currentMeditation = await models.Meditation.findOne({ where: { MEDITATION_ID: countEmailUser.NEXT_MEDITATION_ID } });
+                                    currentMeditation.dataValues.URLS = process.env.AWS_IMAGE_URL;
+                                    await models.User.update({
+                                        MEDITATION_IDS: updateMEDITATION_IDS,
+                                        MEDITATION_START_DATE: currentDate,
+                                        MEDITATION_ID: countEmailUser.NEXT_MEDITATION_ID,
+                                        NEXT_MEDITATION_ID: newMeditation.dataValues.MEDITATION_ID,
+                                        ISSTRIKE: false,
+                                        STEP: 0,
+                                        STEP_HISTORY: strStepHistory
+                                    }, { where: { USER_ID: countEmailUser.USER_ID } });
+                                    return {
+                                        status: true,
+                                        msg: "Login Successfully.",
+                                        data: countEmailUser,
+                                        meditationData: currentMeditation,
+                                        nextMeditation: newMeditation,
+                                        TRIAL_DAYS: Number(process.env.TRIAL_DAYS),
+                                        MUSIC_URL: {
+                                            FIVE: process.env.AWS_IMAGE_URL + 'five.mp3',
+                                            TEN: process.env.AWS_IMAGE_URL + 'ten.mp3',
+                                            FIFTEEN: process.env.AWS_IMAGE_URL + 'fifteen.mp3',
+                                            TWENTY: process.env.AWS_IMAGE_URL + 'twenty.mp3',
+                                        }
+                                    }
+                                } else {
+                                    let newMeditation = await models.Meditation.findOne({ where: { MEDITATION_TYPE: "REGULAR", MEDITATION_ID: { [Op.notIn]: oldMeditation } } });
+                                    newMeditation.dataValues.URLS = process.env.AWS_IMAGE_URL;
+                                    let updateMEDITATION_IDS = countEmailUser.MEDITATION_IDS + "," + newMeditation.dataValues.MEDITATION_ID;
+                                    let currentMeditation = await models.Meditation.findOne({ where: { MEDITATION_ID: countEmailUser.NEXT_MEDITATION_ID } });
+                                    currentMeditation.dataValues.URLS = process.env.AWS_IMAGE_URL;
+                                    await models.User.update({
+                                        MEDITATION_IDS: updateMEDITATION_IDS,
+                                        MEDITATION_START_DATE: currentDate,
+                                        MEDITATION_ID: countEmailUser.NEXT_MEDITATION_ID,
+                                        NEXT_MEDITATION_ID: newMeditation.dataValues.MEDITATION_ID,
+                                        ISSTRIKE: false,
+                                        STEP: 0,
+                                        STEP_HISTORY: strStepHistory
+                                    }, { where: { USER_ID: countEmailUser.USER_ID } });
+                                    return {
+                                        status: true,
+                                        msg: "Login Successfully.",
+                                        data: countEmailUser,
+                                        meditationData: currentMeditation,
+                                        nextMeditation: newMeditation,
+                                        TRIAL_DAYS: Number(process.env.TRIAL_DAYS),
+                                        MUSIC_URL: {
+                                            FIVE: process.env.AWS_IMAGE_URL + 'five.mp3',
+                                            TEN: process.env.AWS_IMAGE_URL + 'ten.mp3',
+                                            FIFTEEN: process.env.AWS_IMAGE_URL + 'fifteen.mp3',
+                                            TWENTY: process.env.AWS_IMAGE_URL + 'twenty.mp3',
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (!countEmailUser.ISACTIVE) {
+                        return {
+                            status: false,
+                            msg: "You are not active."
+                        }
+                    } else if (countEmailUser.ISDELETE) {
+                        return {
+                            status: false,
+                            msg: "Your account was deleted by Mindtree."
+                        }
+                    } else {
+                        return {
+                            status: false,
+                            msg: "Unkonwn Error."
+                        }
+                    }
+                }
+            } else {
+                return {
+                    status: false,
+                    msg: "Email and password must be match."
+                }
+            }
+        } else {
+            const { SOCIAL_ID } = params;
+            let countEmailUser = await models.User.findOne({ where: { SOCIAL_ID: SOCIAL_ID } });
+            if (!!countEmailUser) {
+                if (countEmailUser.ISACTIVE && !countEmailUser.ISDELETE) {
+                    // For Both Same SOCIAL & CUSTOM --- NORMAL User
+                    let finalData = await normalUserLogin(params, countEmailUser)
+                    return finalData;
+                } else {
+                    if (!countEmailUser.ISACTIVE) {
+                        return {
+                            status: false,
+                            msg: "You are not active."
+                        }
+                    } else if (countEmailUser.ISDELETE) {
+                        return {
+                            status: false,
+                            msg: "Your account was deleted by Mindtree."
+                        }
+                    } else {
+                        return {
+                            status: false,
+                            msg: "Unkonwn Error."
+                        }
+                    }
+                }
+            } else {
+                return {
+                    status: false,
+                    msg: "Please Sign Up."
+                }
+            }
+        }
+    } catch (error) {
+        var errMessage = error.message.split(',\n').join('');
+        return {
+            status: false,
+            msg: errMessage.split('Validation error: ').join('')
+        }
+    }
+}
+
+/***
+ * 
+ * @description Date - 29-12-2021 Create By Dipesh 
+ * Update By 
+ * 
+ */
+async function subscriptionServices(params) {
+    try {
+        const { USER_ID, SUBCRIPTION_TYPE } = params;
+        let lastDate = moment().add(SUBCRIPTION_TYPE, 'day');
+        let getUserData = await models.User.findByPk(USER_ID);
+        if (!!getUserData) {
+            // 
+            if (getUserData.ISSUBCRIBE && getUserData.SUBCRIPTION_DAYS !== Number(process.env.TRIAL_DAYS)) {
+                return {
+                    status: false,
+                    msg: "Already Subscription."
+                }
+            } else {
+                await models.User.update({ SUBCRIPTION_DAYS: SUBCRIPTION_TYPE, SUBCRIPTION_END_DATE: lastDate, ISSUBCRIBE: true }, { where: { USER_ID: USER_ID } });
+                getUserData = await models.User.findByPk(USER_ID);
+                return {
+                    status: true,
+                    msg: "You are now primium user. Enjoy!!!",
+                    data: getUserData
+                }
+            }
+
+        } else {
+            return {
+                status: false,
+                msg: "Subscription not update."
+            }
+        }
+    } catch (error) {
+        var errMessage = error.message.split(',\n').join('');
+        return {
+            status: false,
+            msg: errMessage.split('Validation error: ').join('')
+        }
+    }
+}
+
+/***
+ * 
+ * @description Date - 29-12-2021 Create By Dipesh 
+ * Update By 
+ * 
+ */
+async function meditationServices(params) {
+    try {
+        const { USER_ID } = params;
+        let getUserData = await models.User.findByPk(USER_ID);
+        if (!!getUserData) {
+            console.log(getUserData)
+            if (!getUserData.ISSTRIKE) {
+                let newStrike = getUserData.STRIKE + 1;
+                let totalStrike = getUserData.TOTAL_STRIKE + 1;
+                let longestStrike = getUserData.LONGEST_STRIKE;
+                if (longestStrike < newStrike) {
+                    await models.User.update({ STRIKE: newStrike, ISSTRIKE: true, TOTAL_STRIKE: totalStrike, LONGEST_STRIKE: newStrike }, { where: { USER_ID: USER_ID } });
+                } else {
+                    await models.User.update({ STRIKE: newStrike, ISSTRIKE: true, TOTAL_STRIKE: totalStrike }, { where: { USER_ID: USER_ID } });
+                }
+                getUserData = await models.User.findByPk(USER_ID);
+                return {
+                    status: true,
+                    msg: "Your strike complete.",
+                    data: getUserData
+                }
+            } else {
+                return {
+                    status: false,
+                    msg: "Already Strike Completed."
+                }
+            }
+        } else {
+            return {
+                status: false,
+                msg: "Strike not update."
+            }
+        }
+    } catch (error) {
+        var errMessage = error.message.split(',\n').join('');
+        return {
+            status: false,
+            msg: errMessage.split('Validation error: ').join('')
+        }
+    }
+}
+
+
+async function infoServices(params) {
+    try {
+        let data = await models.Meditation.findAll({ where: { MEDITATION_TYPE: "INFO" } });
+        return {
+            status: true,
+            data
+        }
+    } catch (error) {
+        var errMessage = error.message.split(',\n').join('');
+        return {
+            status: false,
+            msg: errMessage.split('Validation error: ').join('')
+        }
+    }
+}
+
+
+async function normalUserLogin(params, countEmailUser) {
+    try {
+        // let checkSubscription = true;
+        var currentDate = moment(new Date()).startOf('days');
+        var givenMeditationDate = moment(countEmailUser.MEDITATION_START_DATE, "YYYY-MM-DD");
+        var diffrenceMeditationDay = moment.duration(givenMeditationDate.diff(currentDate)).asDays();
+        if (diffrenceMeditationDay === 0) {
+            /// Same Return Data
+            let currentMeditation = await models.Meditation.findByPk(countEmailUser.MEDITATION_ID)
+            currentMeditation.dataValues.URLS = process.env.AWS_IMAGE_URL;
+            let nextMeditation = await models.Meditation.findByPk(countEmailUser.NEXT_MEDITATION_ID)
+            nextMeditation.dataValues.URLS = process.env.AWS_IMAGE_URL;
+            return {
+                status: true,
+                msg: "Login Successfully.",
+                data: countEmailUser,
+                meditationData: currentMeditation,
+                nextMeditation,
+                TRIAL_DAYS: Number(process.env.TRIAL_DAYS),
+                MUSIC_URL: {
+                    FIVE: process.env.AWS_IMAGE_URL + 'five.mp3',
+                    TEN: process.env.AWS_IMAGE_URL + 'ten.mp3',
+                    FIFTEEN: process.env.AWS_IMAGE_URL + 'fifteen.mp3',
+                    TWENTY: process.env.AWS_IMAGE_URL + 'twenty.mp3',
+                }
+            }
+        } else {
+            // let flagStep = countEmailUser.STEP >= parseInt(process.env.CONST_STEP) ? true : false;
+            await userStepUpdate(countEmailUser.USER_ID);
+            let strStepHistory = countEmailUser.STEP_HISTORY + false.toString() + ',';
+            let givenCreateDate = moment(countEmailUser.CREATE_DATE).startOf('days');
+            let currentSubscriptionDay = countEmailUser.SUBCRIPTION_DAYS; /// Total Subscription Day
+            let freeDays = Number(process.env.TRIAL_DAYS); /// Free Subscription Day
+            let totalRegisterDays = moment.duration(currentDate.diff(givenCreateDate)).asDays(); // User Register Date
+            let subscriptionEndDate = moment(countEmailUser.SUBCRIPTION_END_DATE).startOf('days');
+            let totalsubscriptionDays = moment.duration(subscriptionEndDate.diff(currentDate)).asDays(); // Total Subscription Pending Days
+            if (totalsubscriptionDays <= 0) {
+                currentSubscriptionDay = 0;
+                // Update Query in DB
+                await models.User.update({ ISSUBCRIBE: false, SUBCRIPTION_DAYS: 0 }, { where: { USER_ID: countEmailUser.USER_ID } });
+            }
+            if (totalRegisterDays >= freeDays || currentSubscriptionDay === 0) {
+                let totalRegular = await models.Meditation.findAll({ where: { MEDITATION_TYPE: "REGULAR" } });  /// regular meditation
+                let currentPending = parseInt(totalRegisterDays) % totalRegular.length; // Current pending data
+                let nextPending = currentPending + 1;
+                if (currentPending <= 0) {
+                    currentPending = totalRegular.length - 2; // Current pending data
+                }
+                if (nextPending >= totalRegular.length) {
+                    nextPending = 0;
+                }
+                console.log(totalRegular[currentPending].dataValues)
+                console.log(totalRegular[nextPending].dataValues)
+                let currentMeditation = totalRegular[currentPending].dataValues;
+                currentMeditation.URLS = process.env.AWS_IMAGE_URL;
+                let newMeditation = totalRegular[nextPending].dataValues;
+                newMeditation.URLS = process.env.AWS_IMAGE_URL;
+                await models.User.update({
+                    MEDITATION_START_DATE: currentDate,
+                    MEDITATION_ID: currentMeditation.MEDITATION_ID,
+                    NEXT_MEDITATION_ID: newMeditation.MEDITATION_ID,
+                    ISSTRIKE: false,
+                    STEP: 0,
+                    STEP_HISTORY: strStepHistory
+                }, { where: { USER_ID: countEmailUser.USER_ID } });
+                return {
+                    status: true,
+                    msg: "Login Successfully.",
+                    data: countEmailUser,
+                    meditationData: currentMeditation,
+                    nextMeditation: newMeditation,
+                    TRIAL_DAYS: Number(process.env.TRIAL_DAYS),
+                    MUSIC_URL: {
+                        FIVE: process.env.AWS_IMAGE_URL + 'five.mp3',
+                        TEN: process.env.AWS_IMAGE_URL + 'ten.mp3',
+                        FIFTEEN: process.env.AWS_IMAGE_URL + 'fifteen.mp3',
+                        TWENTY: process.env.AWS_IMAGE_URL + 'twenty.mp3',
+                    }
+                }
+            } else {
+                let totalFree = await models.Meditation.findAll({ where: { MEDITATION_TYPE: "TRIAL" } }); /// free meditation
+                if (totalRegisterDays >= freeDays - 1) {
+                    let currentMeditation = totalFree.filter(data => data.MEDITATION_ID === countEmailUser.NEXT_MEDITATION_ID)[0];
+                    currentMeditation.URLS = process.env.AWS_IMAGE_URL;
+                    let newMeditation = await models.Meditation.findOne({ where: { MEDITATION_TYPE: "REGULAR" } });
+                    newMeditation.dataValues.URLS = process.env.AWS_IMAGE_URL;
+                    await models.User.update({
+                        MEDITATION_START_DATE: currentDate,
+                        MEDITATION_ID: currentMeditation.MEDITATION_ID,
+                        NEXT_MEDITATION_ID: newMeditation.dataValues.MEDITATION_ID,
+                        ISSTRIKE: false,
+                        STEP: 0,
+                        STEP_HISTORY: strStepHistory
+                    }, { where: { USER_ID: countEmailUser.USER_ID } });
+                    return {
+                        status: true,
+                        msg: "Login Successfully.",
+                        data: countEmailUser,
+                        meditationData: currentMeditation,
+                        nextMeditation: newMeditation,
+                        TRIAL_DAYS: Number(process.env.TRIAL_DAYS),
+                        MUSIC_URL: {
+                            FIVE: process.env.AWS_IMAGE_URL + 'five.mp3',
+                            TEN: process.env.AWS_IMAGE_URL + 'ten.mp3',
+                            FIFTEEN: process.env.AWS_IMAGE_URL + 'fifteen.mp3',
+                            TWENTY: process.env.AWS_IMAGE_URL + 'twenty.mp3'
+                        }
+                    }
+                } else {
+                    let currentPending = totalFree.length - parseInt(totalRegisterDays); // Current pending data
+                    let currentMeditation = totalFree[parseInt(totalRegisterDays)]?.dataValues;
+                    if (currentPending < 0) {
+                        currentMeditation = totalFree[0]?.dataValues;
+                    }
+                    currentMeditation.URLS = process.env.AWS_IMAGE_URL;
+                    let newMeditation = totalFree[parseInt(totalRegisterDays) + 1]?.dataValues;
+                    if (parseInt(totalRegisterDays) + 1 >= totalFree.length) {
+                        newMeditation = totalFree[0]?.dataValues;
+                    }
+                    newMeditation.URLS = process.env.AWS_IMAGE_URL;
+                    // console.log("Free")
+                    // console.log("Free")
+                    await models.User.update({
+                        MEDITATION_START_DATE: currentDate,
+                        MEDITATION_ID: currentMeditation.MEDITATION_ID,
+                        NEXT_MEDITATION_ID: newMeditation.MEDITATION_ID,
+                        ISSTRIKE: false,
+                        STEP: 0,
+                        STEP_HISTORY: strStepHistory
+                    }, { where: { USER_ID: countEmailUser.USER_ID } });
+                    return {
+                        status: true,
+                        msg: "Login Successfully.",
+                        data: countEmailUser,
+                        meditationData: currentMeditation,
+                        nextMeditation: newMeditation,
+                        TRIAL_DAYS: Number(process.env.TRIAL_DAYS),
+                        MUSIC_URL: {
+                            FIVE: process.env.AWS_IMAGE_URL + 'five.mp3',
+                            TEN: process.env.AWS_IMAGE_URL + 'ten.mp3',
+                            FIFTEEN: process.env.AWS_IMAGE_URL + 'fifteen.mp3',
+                            TWENTY: process.env.AWS_IMAGE_URL + 'twenty.mp3'
+                        }
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        var errMessage = error.message.split(',\n').join('');
+        return {
+            status: false,
+            msg: errMessage.split('Validation error: ').join('')
+        }
+    }
+}
+
+
+async function userStepUpdate(USER_ID) {
+    try {
+        if (!!USER_ID) {
+            let lastDateUserData = await models.Step.findOne({
+                where: {
+                    USER_ID: USER_ID
+                },
+                order: [
+                    ['DATE', 'DESC']
+                ],
+                attributes: ['DATE']
+            });
+            let currentDate = moment(new Date()).startOf('date');
+            var diffrenceStepDay = moment.duration(currentDate.diff(new Date(lastDateUserData.dataValues.DATE))).asDays();
+            let stepDataArray = [];
+            if (diffrenceStepDay > 0) {
+                for (let index = 0; index < diffrenceStepDay; index++) {
+                    let DATE = moment(new Date(lastDateUserData.dataValues.DATE)).add(index + 1, 'days').format('YYYY-MM-DD');
+                    const STEP = 0;
+                    const FLAG = false;
+                    stepDataArray.push({
+                        DATE, STEP, FLAG, USER_ID
+                    })
+                }
+            }
+            await models.Step.bulkCreate(stepDataArray);
+        }
+    } catch (error) {
+
+    }
+
+}
+
+async function stepServices(params) {
+    try {
+        const { USER_ID, STEPARRAY, PAGE } = params;
+        let getDate = STEPARRAY.map(data => data.DATE);
+        const offset = (PAGE - 1) * 30;
+        const limit = 30;
+        let getUserData = await models.Step.findAll({
+            where: {
+                USER_ID: USER_ID,
+                DATE: { [Op.in]: getDate },
+            }
+        });
+        // let lastDateUserData = await models.Step.findOne({
+        //     where: {
+        //         USER_ID: USER_ID
+        //     },
+        //     order: [
+        //         ['DATE', 'DESC']
+        //     ],
+        //     attributes: ['DATE']
+        // });
+        // console.log(lastDateUserData.dataValues.DATE);
+        // let currentDate = moment(new Date()).startOf('date');
+        // console.log(currentDate);
+        // var diffrenceStepDay = moment.duration(currentDate.diff(new Date(lastDateUserData.dataValues.DATE))).asDays();
+        // console.log(diffrenceStepDay);
+        // console.log(lastDateUserData.dataValues.DATE);
+        // let stepDataArray = [];
+        // if(diffrenceStepDay > 0) {
+        //     for (let index = 0; index < diffrenceStepDay; index++) {
+        //         console.log(index + 1)
+        //         let DATE = moment(new Date(lastDateUserData.dataValues.DATE)).add(index + 1, 'days').format('YYYY-MM-DD');
+        //         const STEP = 0;
+        //         const FLAG = false;
+
+        //         stepDataArray.push({
+        //             DATE, STEP, FLAG, USER_ID
+        //         })
+        //     }
+        // }
+        // console.log(stepDataArray)
+        if (!!getUserData) {
+            if (getUserData.length > 0) {
+                let filterData = STEPARRAY.filter(data => !getUserData.some(d => d.DATE == data.DATE));
+                if (filterData.length > 0) {
+                    let stepData = filterData.map(data => {
+                        data.USER_ID = USER_ID;
+                        if (data.STEP >= 5000) {
+                            data.FLAG = true;
+                            return data;
+                        } else {
+                            data.FLAG = false;
+                            return data;
+                        }
+                    });
+                    await models.Step.bulkCreate(stepData);
+                } else {
+                    for (let index = 0; index < getUserData.length; index++) {
+                        const date = getUserData[index].DATE;
+                        const stepId = getUserData[index].STEP_ID;
+                        let filterData = STEPARRAY.filter(data => data.DATE == date);
+                        await models.Step.update({
+                            DATE: date,
+                            STEP: filterData[0].STEP,
+                            FLAG: filterData[0].STEP >= 5000 ? true : false
+                        }, { where: { STEP_ID: stepId } });
+                    }
+                }
+                let getStepData = await models.Step.findAll({
+                    offset,
+                    limit,
+                    where: { USER_ID: USER_ID }
+                })
+                return {
+                    status: true,
+                    msg: "Step update. Enjoy!!!",
+                    data: getStepData
+                };
+            } else {
+                let stepData = STEPARRAY.map(data => {
+                    data.USER_ID = USER_ID;
+                    if (data.STEP >= 5000) {
+                        data.FLAG = true;
+                        return data;
+                    } else {
+                        data.FLAG = false;
+                        return data;
+                    }
+                });
+                await models.Step.bulkCreate(stepData);
+                let getStepData = await models.Step.findAll({
+                    offset,
+                    limit,
+                    where: { USER_ID: USER_ID }
+                })
+                return {
+                    status: true,
+                    msg: "Step update. Enjoy!!!",
+                    data: getStepData
+                };
+            }
+        } else {
+            return {
+                status: false,
+                msg: "Step not update."
+            }
+        }
+    } catch (error) {
+        var errMessage = error.message.split(',\n').join('');
+        return {
+            status: false,
+            msg: errMessage.split('Validation error: ').join('')
+        }
+    }
+}
+
+module.exports = { insertServices, loginServices, subscriptionServices, meditationServices, infoServices, stepServices };
